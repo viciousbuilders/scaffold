@@ -1,9 +1,23 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import assert from "node:assert/strict";
 import { once } from "node:events";
-import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
+
+async function runtimeFiles(directory) {
+  const files = {};
+  for (const entry of await readdir(directory, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const path = join(entry.parentPath, entry.name);
+    files[relative(directory, path)] = createHash("sha256")
+      .update(await readFile(path))
+      .digest("hex");
+  }
+  return files;
+}
 
 export async function smokeDesktop(bundle) {
   const temporary = await mkdtemp(join(tmpdir(), "scaffold-release-check-"));
@@ -13,6 +27,7 @@ export async function smokeDesktop(bundle) {
     serverDirectory,
     { recursive: true },
   );
+  const before = await runtimeFiles(serverDirectory);
   const settings = join(temporary, "settings");
   const workspace = join(temporary, "questions");
   await mkdir(settings);
@@ -70,13 +85,18 @@ export async function smokeDesktop(bundle) {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     if (!ready) throw new Error(`Packaged server did not start. ${log}`);
-    for (const path of ["/api/workspace", "/practice"]) {
+    for (const path of ["/api/workspace", "/", "/practice"]) {
       const response = await fetch(`${origin}${path}`, { signal: AbortSignal.timeout(10000) });
       if (!response.ok) throw new Error(`Packaged ${path} returned ${response.status}. ${log}`);
       if (path === "/api/workspace") await response.json();
       else if (!(await response.text()).toLowerCase().includes("scaffold"))
         throw new Error("Practice page is missing its app content.");
     }
+    assert.deepEqual(
+      await runtimeFiles(serverDirectory),
+      before,
+      "Opening pages must not modify the signed application's server files.",
+    );
     console.log("Packaged runtime check passed (isolated temporary workspace).");
   } finally {
     const stopped = once(child, "exit").catch(() => {});
