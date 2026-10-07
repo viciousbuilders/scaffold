@@ -22,6 +22,19 @@ The default workspace is `~/Documents/Scaffold`. The folder button in the top ba
 
 Scaffold checks the files every three seconds while visible. Invalid edits show an error and keep the last valid questions on screen. Keep question IDs stable when editing to retain matching answers. Progress is saved separately and atomically. Existing browser work is migrated to the default workspace on first use.
 
+### Format question text
+
+Descriptions, example explanations, constraints, hints, solutions and tutor messages render Markdown, including headings, lists, tables, **bold text** and `inline code`. Use `$...$` for inline LaTeX and `$$...$$` on separate lines for display equations. Plain text stays plain text; add the formatting to your question files or ask your coding agent to do it.
+
+In JSON strings, escape LaTeX backslashes and use `\n` for line breaks. For example:
+
+```json
+{
+  "description": "Calculate **mean squared error** for `actual` and `predicted`.\n\n$$\n\\operatorname{MSE} = \\frac{1}{n} \\sum_{i=1}^{n} (\\hat{y}_i - y_i)^2\n$$",
+  "explanation": "The mean squared difference is $\\frac{4}{3}$."
+}
+```
+
 ## AI providers
 
 Open the provider name in the top bar, choose a CLI, and click **Save & check**. Leave **Model** empty to use that CLI's own default, or enter a model it supports (OpenCode uses `provider/model`). Each provider remembers its own model and executable. **Command settings** accepts an executable name on PATH or an absolute path; common Mac, Homebrew, pnpm and nvm locations are also searched when the app launches from Finder.

@@ -93,7 +93,9 @@ export function QuestionPane({ question, index }: { question: Question; index: n
                     <code>{example.output}</code>
                   </p>
                 </div>
-                <p className="example-explanation">{example.explanation}</p>
+                <div className="example-explanation">
+                  <Markdown>{example.explanation}</Markdown>
+                </div>
               </div>
             ))}
             {question.constraints.length > 0 && (

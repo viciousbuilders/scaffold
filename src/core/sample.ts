@@ -164,12 +164,12 @@ export const sampleQuestions: Question[] = [
     topic: "Probability & model evaluation",
     difficulty: "Medium",
     description:
-      "Write `mse(actual, predicted)` to calculate **mean squared error**. For each pair, square the difference between the prediction and actual value, then average the squared differences.\n\nReturn `0.0` if both lists are empty. The lists always have equal lengths.",
+      "Write `mse(actual, predicted)` to calculate **mean squared error**. For each pair, square the difference between the prediction and actual value, then average the squared differences.\n\n$$\n\\operatorname{MSE} = \\frac{1}{n} \\sum_{i=1}^{n} (\\hat{y}_i - y_i)^2\n$$\n\nReturn `0.0` if both lists are empty. The lists always have equal lengths.",
     examples: [
       {
         input: "mse([1, 2, 3], [1, 2, 5])",
         output: "1.3333333333",
-        explanation: "Squared differences are 0, 0, and 4; their mean is 4/3.",
+        explanation: "Squared differences are $0$, $0$, and $4$; their mean is $\\frac{4}{3}$.",
       },
     ],
     starterCode:
