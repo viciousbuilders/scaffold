@@ -1,0 +1,9 @@
+node_modules
+.next
+package-lock.json
+next-env.d.ts
+*.tsbuildinfo
+
+/server/
+/desktop-stage/
+/dist/

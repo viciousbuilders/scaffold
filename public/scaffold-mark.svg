@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-labelledby="title desc">
+  <title id="title">Scaffold</title>
+  <desc id="desc">A bold S formed by two offset beams and a diagonal brace.</desc>
+  <path d="M30 8H16L9 16L31 24L24 32H10" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

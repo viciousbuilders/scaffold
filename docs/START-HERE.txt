@@ -1,0 +1,35 @@
+SCAFFOLD 0.1.0
+
+A local practice app for coding, math and quant questions.
+macOS 13 or later. This release is for Apple silicon (M1 or newer).
+
+INSTALL
+Drag Scaffold.app into Applications and open it.
+
+YOUR QUESTIONS
+Scaffold uses ~/Documents/Scaffold by default. Use Questions in the top bar
+to choose another folder. Open that same folder with your coding agent,
+read its SCAFFOLD.md instructions, and ask the agent to create curriculum.json
+and questions.json. Scaffold reloads your questions automatically.
+
+Your answers and progress stay in progress.json inside that folder.
+Your coding agent should leave progress.json alone.
+
+OPTIONAL AI TUTOR
+Install and sign in to Codex, Claude Code, OpenCode or Pi in Terminal.
+Choose your CLI from the AI menu in the top bar. No app API key is needed.
+Other tools can be configured as a custom command; see the README.
+The tutor guides you with hints. Conceptual answers use AI grading.
+Your question, attempt and chat are sent through the selected CLI to its
+provider; that provider's account limits and data policies apply.
+
+RUNNING CODE
+Python uses Pyodide; the first run downloads the Python runtime.
+JavaScript runs in an isolated browser worker.
+C++17 needs Xcode command line tools (xcode-select --install).
+CUDA editing is supported, but this Mac release cannot execute CUDA code.
+Cloud GPU execution is not connected yet.
+
+SOURCE AND HELP
+https://github.com/viciousbuilders/scaffold
+https://viciousbuilders.com/scaffold

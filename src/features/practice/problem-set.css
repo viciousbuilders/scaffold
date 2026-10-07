@@ -1,0 +1,266 @@
+.problem-set {
+  min-height: calc(100dvh - 52px);
+}
+.problem-set-content {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 36px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.problem-set-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.set-meta {
+  display: flex;
+  gap: 10px;
+  color: var(--muted);
+  font:
+    12px var(--font-mono),
+    monospace;
+}
+.set-meta > span {
+  opacity: 0.5;
+}
+.problem-set-intro h1 {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.set-progress {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+.set-progress-overview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.set-progress-overview > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.set-progress-overview strong {
+  font:
+    500 16px var(--font-mono),
+    monospace;
+  color: var(--foreground);
+}
+.set-progress-overview strong span {
+  color: var(--muted);
+}
+.resume-problem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
+  max-width: 50%;
+}
+.resume-problem > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.resume-problem .button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+.problem-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.format-filter {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.format-filter button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+}
+.format-filter button[aria-pressed="true"] {
+  background: var(--surface-hover);
+  color: var(--foreground);
+  font-weight: 500;
+}
+.problem-search {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.problem-search:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.problem-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+}
+.problem-search input:focus-visible {
+  outline: none;
+}
+.problem-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.problem-group-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0 4px 8px;
+}
+.problem-group-heading > span {
+  color: var(--muted);
+  font:
+    12px var(--font-mono),
+    monospace;
+}
+.problem-group-heading h2 {
+  font-size: 14px;
+}
+.group-progress {
+  margin-left: auto;
+}
+.problem-rows {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.problem-row {
+  display: grid;
+  grid-template-columns: 28px 36px minmax(0, 1fr) 90px 80px 16px;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 16px;
+  font-size: 13.5px;
+}
+.problem-row + .problem-row {
+  border-top: 1px solid var(--border);
+}
+.problem-row:hover {
+  background: var(--surface-raised);
+}
+.problem-status {
+  display: flex;
+  color: var(--muted);
+}
+.problem-status.solved {
+  color: var(--accent);
+}
+.problem-status.attempted {
+  color: var(--amber);
+}
+.row-number {
+  font:
+    12px var(--font-mono),
+    monospace;
+  color: var(--muted);
+}
+.row-format {
+  font-size: 12px;
+  color: var(--muted);
+}
+.row-difficulty {
+  font-size: 12px;
+}
+.row-difficulty.easy {
+  color: var(--success);
+}
+.row-difficulty.medium {
+  color: var(--amber);
+}
+.row-difficulty.hard {
+  color: var(--error);
+}
+.problem-row > svg {
+  color: var(--muted);
+}
+.no-matches {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--muted);
+  padding: 32px;
+}
+@media (max-width: 760px) {
+  .problem-set-content {
+    padding: 32px 16px 40px;
+    gap: 24px;
+  }
+  .problem-set-intro h1 {
+    font-size: 24px;
+  }
+  .set-progress {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .resume-problem {
+    align-items: flex-start;
+    max-width: 100%;
+  }
+  .format-filter {
+    flex: 1;
+  }
+  .format-filter button {
+    flex: 1;
+    min-height: 44px;
+    padding: 0 10px;
+  }
+  .problem-search {
+    width: 100%;
+    min-height: 44px;
+  }
+  .problem-search input {
+    font-size: 16px;
+  }
+  .problem-row {
+    grid-template-columns: 20px 26px minmax(0, 1fr) 55px;
+    padding: 12px;
+    gap: 8px;
+  }
+  .row-format,
+  .problem-row > svg {
+    display: none;
+  }
+  .problem-group-heading {
+    gap: 8px;
+  }
+}
