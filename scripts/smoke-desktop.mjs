@@ -1,12 +1,18 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 export async function smokeDesktop(bundle) {
   const temporary = await mkdtemp(join(tmpdir(), "scaffold-release-check-"));
+  const serverDirectory = join(temporary, "server");
+  await cp(
+    bundle ? join(bundle, "Contents/Resources/app/server") : resolve("server"),
+    serverDirectory,
+    { recursive: true },
+  );
   const settings = join(temporary, "settings");
   const workspace = join(temporary, "questions");
   await mkdir(settings);
@@ -27,11 +33,15 @@ export async function smokeDesktop(bundle) {
     SCAFFOLD_DATA_DIR: settings,
   };
   delete env.OPENAI_API_KEY;
-  const child = spawn(join(bundle, "Contents/MacOS/Scaffold"), ["server.js"], {
-    cwd: join(bundle, "Contents/Resources/app/server"),
-    env,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const child = spawn(
+    bundle ? join(bundle, "Contents/MacOS/Scaffold") : process.execPath,
+    ["server.js"],
+    {
+      cwd: serverDirectory,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
   let log = "";
   let failure;
   child.on("error", (error) => {
@@ -64,7 +74,7 @@ export async function smokeDesktop(bundle) {
       const response = await fetch(`${origin}${path}`, { signal: AbortSignal.timeout(10000) });
       if (!response.ok) throw new Error(`Packaged ${path} returned ${response.status}. ${log}`);
       if (path === "/api/workspace") await response.json();
-      else if (!(await response.text()).includes("scaffold"))
+      else if (!(await response.text()).toLowerCase().includes("scaffold"))
         throw new Error("Practice page is missing its app content.");
     }
     console.log("Packaged runtime check passed (isolated temporary workspace).");

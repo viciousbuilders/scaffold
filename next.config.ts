@@ -1,10 +1,3 @@
 import type { NextConfig } from "next";
-const nextConfig: NextConfig = {
-  output: "standalone",
-  // Workspaces live outside the source tree; old builds and local credentials
-  // must never become dependencies of the packaged server.
-  outputFileTracingExcludes: {
-    "/*": ["./dist/**/*", "./desktop-stage/**/*", "./.git/**/*", "./.env*"],
-  },
-};
+const nextConfig: NextConfig = { output: "standalone" };
 export default nextConfig;
