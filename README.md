@@ -94,16 +94,3 @@ Coding questions use a `language` field: `python` (default for existing question
 Cloud GPU execution is a future addition. CUDA Run/Submit stay disabled on this Mac with an explanation. Optional compiler paths: `SCAFFOLD_CPP_COMPILER` and `SCAFFOLD_CUDA_COMPILER`.
 
 Tests are boolean expressions in the question's language. C++ and CUDA answers contain functions and optional includes; Scaffold supplies `main()`. JavaScript tests may use `await`. Native snippets execute as local processes with your user permissions, a 20-second compilation limit, a 10-second execution limit, and capped output. JavaScript also has a 10-second execution limit. Read `LANGUAGES.md` in your question folder when authoring questions with Codex.
-
-## Release a Mac build
-
-The release script creates a DMG, ZIP, setup guide, license and SHA-256 checksums. It requires a Developer ID Application identity and a notarization credential profile already stored in your Mac keychain:
-
-```sh
-SCAFFOLD_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-SCAFFOLD_NOTARY_PROFILE="YourStoredProfile" npm run desktop:release
-```
-
-It signs the app through Electron Packager, checks the packaged server in a temporary workspace, submits the DMG to Apple, waits for acceptance, staples both app and DMG, and verifies the signature and Gatekeeper assessment before completing the archives. Credentials stay in the keychain. Release files live in `dist/release-<version>-<architecture>/` and belong in GitHub Releases, not in Git history. See [Electron's signing documentation](https://www.electronjs.org/docs/latest/tutorial/code-signing).
-
-Scaffold's code is MIT licensed. Bundled dependencies retain their own licenses, including Electron's license and third-party notices inside the app.
