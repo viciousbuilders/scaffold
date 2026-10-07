@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { smokeDesktop } from "./smoke-desktop.mjs";
 
 const identity = process.env.SCAFFOLD_SIGNING_IDENTITY;
 const profile = process.env.SCAFFOLD_NOTARY_PROFILE;
@@ -25,6 +26,7 @@ await rm(staging, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await mkdir(staging, { recursive: true });
 run("codesign", ["--verify", "--deep", "--strict", bundle]);
+await smokeDesktop(bundle);
 run("ditto", [bundle, `${staging}/Scaffold.app`]);
 run("ln", ["-s", "/Applications", `${staging}/Applications`]);
 await cp("docs/START-HERE.txt", `${staging}/START-HERE.txt`);

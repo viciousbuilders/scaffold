@@ -104,6 +104,6 @@ SCAFFOLD_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 SCAFFOLD_NOTARY_PROFILE="YourStoredProfile" npm run desktop:release
 ```
 
-It signs the app through Electron Packager, submits the DMG to Apple, waits for acceptance, staples both app and DMG, and verifies the signature and Gatekeeper assessment before completing the archives. Credentials stay in the keychain. Release files live in `dist/release-<version>-<architecture>/` and belong in GitHub Releases, not in Git history. See [Electron's signing documentation](https://www.electronjs.org/docs/latest/tutorial/code-signing).
+It signs the app through Electron Packager, checks the packaged server in a temporary workspace, submits the DMG to Apple, waits for acceptance, staples both app and DMG, and verifies the signature and Gatekeeper assessment before completing the archives. Credentials stay in the keychain. Release files live in `dist/release-<version>-<architecture>/` and belong in GitHub Releases, not in Git history. See [Electron's signing documentation](https://www.electronjs.org/docs/latest/tutorial/code-signing).
 
 Scaffold's code is MIT licensed. Bundled dependencies retain their own licenses, including Electron's license and third-party notices inside the app.

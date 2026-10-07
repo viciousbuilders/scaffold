@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "desktop:dev": "node scripts/launch-desktop.mjs --dev",
-    "desktop:prepare": "npm run icon:build && npm run build && node scripts/prepare-desktop.mjs",
+    "desktop:prepare": "node scripts/clean-desktop.mjs && npm run icon:build && npm run build && node scripts/prepare-desktop.mjs",
     "desktop": "npm run desktop:prepare && node scripts/launch-desktop.mjs",
     "desktop:package": "npm run desktop:prepare && node scripts/package-desktop.mjs",
     "icon:build": "node scripts/build-icon.mjs",
