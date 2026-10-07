@@ -1,5 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, Menu } = require("electron");
-const { spawn } = require("node:child_process");
+const { app, BrowserWindow, dialog, ipcMain, shell, Menu, utilityProcess } = require("electron");
 const { createServer } = require("node:net");
 const { join } = require("node:path");
 const fs = require("node:fs/promises");
@@ -25,12 +24,12 @@ async function startServer() {
   const development = process.argv.includes("--dev");
   const env = {
     ...process.env,
-    ELECTRON_RUN_AS_NODE: "1",
     HOSTNAME: "127.0.0.1",
     PORT: String(port),
     SCAFFOLD_DATA_DIR: dataDir,
   };
   delete env.OPENAI_API_KEY;
+  delete env.ELECTRON_RUN_AS_NODE;
   const args = development
     ? [
         join(root, "node_modules/next/dist/bin/next"),
@@ -41,11 +40,12 @@ async function startServer() {
         String(port),
       ]
     : [script];
-  server = spawn(process.execPath, args, {
+  // Use the background helper; launching the app executable as Node adds a Dock icon.
+  server = utilityProcess.fork(args[0], args.slice(1), {
     env,
     cwd: development ? root : join(root, "server"),
     stdio: ["ignore", "pipe", "pipe"],
-    detached: true,
+    serviceName: "Scaffold Server",
   });
   let log = "";
   server.stdout.on("data", () => {});
@@ -163,10 +163,6 @@ else {
     });
   app.on("window-all-closed", () => app.quit());
   app.on("will-quit", () => {
-    if (server?.pid) {
-      try {
-        process.kill(-server.pid, "SIGTERM");
-      } catch {}
-    }
+    server?.kill();
   });
 }

@@ -1,6 +1,8 @@
 import { packager } from "@electron/packager";
 import { smokeDesktop } from "./smoke-desktop.mjs";
+import { smokeDesktopShell } from "./smoke-desktop-shell.mjs";
 await smokeDesktop();
+await smokeDesktopShell();
 const paths = await packager({
   dir: "desktop-stage",
   name: "Scaffold",
