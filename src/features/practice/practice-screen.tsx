@@ -1,12 +1,15 @@
 "use client";
 
-import { FolderOpen } from "lucide-react";
+import { useState } from "react";
+import { TutorPanel } from "@/features/tutor/tutor-panel";
+import { FolderOpen, MessageCircle } from "lucide-react";
 import { useSession, useWorkspacePath } from "@/features/session/store";
 import { AnswerPane } from "./answer-pane";
 import { QuestionPane } from "./question-pane";
 
 export function PracticeScreen() {
   const session = useSession();
+  const [tutorOpen, setTutorOpen] = useState(false);
   const path = useWorkspacePath();
   const index = Math.min(session.activeIndex, Math.max(0, session.questions.length - 1));
   const question = session.questions[index];
@@ -32,9 +35,29 @@ export function PracticeScreen() {
 
   return (
     <main id="main-content" className="practice-screen">
-      <div className="practice-workspace">
+      <div className="practice-modebar">
+        <span>{question.topic}</span>
+        <button
+          className="text-button"
+          aria-expanded={tutorOpen}
+          aria-controls="practice-tutor"
+          onClick={() => setTutorOpen(!tutorOpen)}
+        >
+          <MessageCircle size={14} />
+          {tutorOpen ? "Hide tutor" : "Tutor"}
+        </button>
+      </div>
+      <div className={`practice-workspace ${tutorOpen ? "with-tutor" : ""}`}>
         <QuestionPane key={`question-${question.id}`} question={question} index={index} />
         <AnswerPane key={`answer-${question.id}`} question={question} />
+        <aside id="practice-tutor" className="practice-tutor" hidden={!tutorOpen}>
+          <TutorPanel
+            key={question.id}
+            question={question}
+            expanded={tutorOpen}
+            onToggle={() => setTutorOpen(false)}
+          />
+        </aside>
       </div>
     </main>
   );

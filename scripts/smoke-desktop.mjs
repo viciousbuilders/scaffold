@@ -92,6 +92,17 @@ export async function smokeDesktop(bundle) {
       else if (!(await response.text()).toLowerCase().includes("scaffold"))
         throw new Error("Practice page is missing its app content.");
     }
+    for (const action of ["lint", "format"]) {
+      const response = await fetch(`${origin}/api/python-tools`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", origin },
+        body: JSON.stringify({ action, code: "x=1\nprint(missing)\n" }),
+      });
+      assert.equal(response.status, 200, await response.clone().text());
+      const result = await response.json();
+      if (action === "lint") assert(result.diagnostics.some((d) => d.source === "Ruff F821"));
+      else assert(result.code.includes("x = 1"));
+    }
     assert.deepEqual(
       await runtimeFiles(serverDirectory),
       before,

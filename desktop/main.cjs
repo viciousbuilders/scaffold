@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, shell, Menu, utilityProcess } = req
 const { createServer } = require("node:net");
 const { join } = require("node:path");
 const fs = require("node:fs/promises");
+const { releaseColab } = require("./colab-cleanup.cjs");
 app.setName("Scaffold");
 let server;
 let window;
@@ -99,16 +100,35 @@ function createWindow() {
   window.on("close", (event) => {
     if (window.__closing) return;
     event.preventDefault();
-    // Wait for progress to reach disk before stopping the local process.
-    window.webContents
-      .executeJavaScript(
-        "window.scaffoldFlushProgress ? window.scaffoldFlushProgress() : Promise.resolve()",
-      )
-      .catch(() => {})
-      .finally(() => {
-        window.__closing = true;
-        window.close();
+    if (window.__cleaning) return;
+    window.__cleaning = true;
+    void (async () => {
+      await window.webContents
+        .executeJavaScript(
+          "window.scaffoldFlushProgress ? window.scaffoldFlushProgress() : Promise.resolve()",
+        )
+        .catch(() => {});
+      // Tell the server to stop accepting work before releasing its owned GPU.
+      if (origin)
+        await fetch(`${origin}/api/colab`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", origin },
+          body: JSON.stringify({ action: "shutdown" }),
+          signal: AbortSignal.timeout(35000),
+        }).catch(() => {});
+      await releaseColab(dataDir);
+      window.__closing = true;
+      window.close();
+    })().catch(async () => {
+      window.__cleaning = false;
+      await dialog.showMessageBox(window, {
+        type: "warning",
+        title: "GPU cleanup needs a retry",
+        message:
+          "Scaffold could not confirm that its GPU was released. Check your internet connection, then close the window again to retry.",
+        buttons: ["Keep open"],
       });
+    });
   });
   void window.loadURL(origin);
 }
@@ -154,6 +174,8 @@ else {
           { role: "windowMenu" },
         ]),
       );
+      // Recover an owned runtime left behind by a previous unexpected exit.
+      await releaseColab(dataDir);
       await startServer();
       createWindow();
     })

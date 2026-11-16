@@ -26,6 +26,19 @@ export async function smokeDesktopShell() {
 const { execFileSync } = require("node:child_process");
 const { join } = require("node:path");
 const { app } = require("electron");
+const fs = require("node:fs");
+const gpuFolder = join(__dirname, "settings", "colab");
+fs.mkdirSync(gpuFolder, {recursive:true});
+fs.writeFileSync(join(gpuFolder, "credentials.json"), JSON.stringify({client_id:"test",client_secret:"test",refresh_token:"test"}));
+const ownership = () => fs.writeFileSync(join(gpuFolder, "runtime.json"), JSON.stringify({runtime:"runtimes/scaffold-shell-test",ready:true}));
+ownership();
+let releases = 0;
+const originalFetch = global.fetch;
+global.fetch = async (url, options) => {
+  if (String(url) === "https://oauth2.googleapis.com/token") return Response.json({access_token:"test"});
+  if (String(url).startsWith("https://colaboratory.googleapis.com/")) { assert.equal(options.method,"DELETE"); assert.ok(String(url).endsWith("/runtimes/scaffold-shell-test")); releases++; return Response.json({}); }
+  return originalFetch(url,options);
+};
 app.setPath("userData", join(__dirname, "settings"));
 let result = 1;
 app.on("browser-window-created", (_event, window) => {
@@ -48,6 +61,8 @@ app.on("browser-window-created", (_event, window) => {
         if (path === "/practice") assert.match(await response.text(), /scaffold/i);
         else await response.json();
       }
+      assert.equal(releases,1,"Startup must release the leftover owned GPU.");
+      ownership();
       result = 0;
     } catch (error) {
       console.error(error);
@@ -56,7 +71,7 @@ app.on("browser-window-created", (_event, window) => {
     }
   });
 });
-app.on("will-quit", () => { process.exitCode = result; });
+app.on("will-quit", () => { if (releases !== 2 || fs.existsSync(join(gpuFolder,"runtime.json"))) { console.error("GPU shutdown cleanup did not complete"); result=1; } process.exitCode = result; });
 require("./desktop/main.cjs");
 `,
     );

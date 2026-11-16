@@ -30,7 +30,7 @@ export function Header() {
         {practicing && session.questions.length > 0 && (
           <div className="header-navigation">
             <Link href="/" className="problems-link">
-              <List size={16} aria-hidden="true" /> Problems
+              <List size={16} aria-hidden="true" /> Your learning
             </Link>
             <button
               className="icon-button"

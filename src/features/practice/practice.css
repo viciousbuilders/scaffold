@@ -695,3 +695,89 @@
     min-height: 290px;
   }
 }
+
+.code-workspace {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.code-workspace > .code-mirror-panel {
+  flex: 1;
+  min-height: 0;
+}
+.code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.code-toolbar > div {
+  display: flex;
+  gap: 16px;
+}
+.code-toolbar .text-button {
+  font-size: 12px;
+}
+.code-tool-label {
+  color: var(--muted);
+}
+.code-tool-error {
+  color: var(--error);
+  font-size: 12px;
+  padding: 6px 12px;
+  margin: 0;
+}
+
+.practice-modebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.practice-modebar .text-button {
+  font-size: 12px;
+}
+.practice-workspace.with-tutor {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(270px, 0.65fr);
+}
+.practice-tutor {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.practice-tutor[hidden] {
+  display: none;
+}
+.practice-tutor .tutor-panel {
+  border: 0;
+  background: var(--surface);
+}
+.practice-tutor .tutor-transcript {
+  max-height: none;
+}
+@media (max-width: 1100px) {
+  .practice-workspace.with-tutor {
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+  .practice-tutor:not([hidden]) {
+    position: fixed;
+    right: 8px;
+    top: 96px;
+    bottom: 8px;
+    width: min(380px, calc(100% - 16px));
+    z-index: 20;
+    box-shadow: var(--shadow);
+  }
+}
+@media (max-width: 760px) {
+  .practice-workspace.with-tutor {
+    grid-template-columns: 1fr;
+  }
+}

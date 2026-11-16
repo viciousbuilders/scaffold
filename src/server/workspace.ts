@@ -6,6 +6,9 @@ import { z } from "zod";
 import { curriculumSchema, questionSchema, validateQuestions } from "@/core/schemas";
 import { EMPTY, progressSchema, type Session, type Progress } from "@/core/session";
 import { AiError } from "./ai/service";
+import { researchCurriculum, researchQuestions } from "@/core/learning-path";
+import { trainingCurriculum, trainingQuestions } from "@/core/training-path";
+import { sourceQuestion } from "@/core/source-library";
 
 export const workspaceQuestionsSchema = z.object({ questions: z.array(questionSchema).max(500) });
 export const dataDirectory = () =>
@@ -38,12 +41,16 @@ For coding, use standard-library pure functions, four-space indentation, starter
 
 Never overwrite progress.json. Write JSON atomically (temporary file then rename) when possible. Validate against the supplied schemas before finishing.
 `;
-const GUIDE = LEGACY_GUIDE.replace(
+const PREVIOUS_GUIDE = LEGACY_GUIDE.replace(
   "Generate small Python snippets",
   "Generate small Python, JavaScript, C++17 or CUDA C++ snippets",
 ).replace(
   "For coding, use standard-library pure functions, four-space indentation, starter code with TODO/pass,",
   "For coding, set language to python, javascript, cpp or cuda (omitted means Python). Use functions without a main() entry point. Python and JavaScript run in browser workers; C++ uses a local compiler; CUDA needs NVIDIA hardware and the toolkit. JavaScript supports async functions, but not Node imports. Use four-space indentation for Python/C++/CUDA and two spaces for JavaScript, starter code with TODOs,",
+);
+const GUIDE = PREVIOUS_GUIDE.replace(
+  "Generate small Python, JavaScript, C++17 or CUDA C++ snippets aimed at AI work, quant problems, written questions or quizzes as requested.",
+  "Support any topic the learner chooses, such as languages, history, science, writing, arts, professional skills or technology. Choose written explanations, recall quizzes, practical activities or coding exercises to match the goal; do not assume programming or mathematics is relevant. For open-ended work, use kind: written and assessment: self-review, with a reference example and clear review criteria rather than a single supposedly correct answer. For factual conceptual questions, use kind: written with numericAnswer: null. Match the learner's language and level, and avoid inventing source citations.",
 );
 const LANGUAGES = `# Coding languages
 
@@ -59,17 +66,24 @@ async function upgradeGeneratedFiles(path: string) {
   // Only replace exact app-generated metadata. Preserve any personal edits.
   const guidePath = join(path, "SCAFFOLD.md");
   try {
-    if ((await readFile(guidePath, "utf8")) === LEGACY_GUIDE)
+    if ([LEGACY_GUIDE, PREVIOUS_GUIDE].includes(await readFile(guidePath, "utf8")))
       await writeFile(guidePath, GUIDE, { mode: 0o600 });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
   const schemaPath = join(path, "questions.schema.json");
   const previous = await readJson(schemaPath);
-  const legacy = z.toJSONSchema(
-    z.object({ questions: z.array(questionSchema.omit({ language: true })).max(500) }),
-  );
-  if (previous && JSON.stringify(previous) === JSON.stringify(legacy)) {
+  const generatedVersions = [
+    questionSchema.omit({ language: true }),
+    questionSchema.omit({ lab: true }),
+    questionSchema.omit({ language: true, lab: true }),
+    questionSchema.omit({ language: true, source: true, assessment: true, lab: true }),
+    questionSchema.omit({ source: true, assessment: true, lab: true }),
+  ].map((schema) => z.toJSONSchema(z.object({ questions: z.array(schema).max(500) })));
+  if (
+    previous &&
+    generatedVersions.some((schema) => JSON.stringify(previous) === JSON.stringify(schema))
+  ) {
     const temporary = `${schemaPath}.${crypto.randomUUID()}.tmp`;
     await writeFile(temporary, JSON.stringify(z.toJSONSchema(workspaceQuestionsSchema), null, 2), {
       mode: 0o600,
@@ -90,6 +104,15 @@ export async function prepareWorkspace(path: string) {
   await Promise.all([
     createIfMissing(join(path, "SCAFFOLD.md"), GUIDE),
     createIfMissing(join(path, "LANGUAGES.md"), LANGUAGES),
+    createIfMissing(
+      join(path, "LABS.md"),
+      `# External programming labs
+
+Questions may set lab to { environment, filename, setup }. Supported environments: pytorch, cuda, triton, pytorch-cuda. Use kind: written, assessment: self-review, a nonempty starterCode and a full reference solution. Set language to python or cuda for syntax highlighting. Keep filenames simple .py or .cu names. Provide deterministic checks inside the downloaded file and state hardware requirements. The learner edits code, downloads it, runs it externally and records output in working. Scaffold does not execute these labs. Never claim a GPU check passed without running it on appropriate hardware.
+
+Keep question IDs stable and never modify progress.json.
+`,
+    ),
     createIfMissing(
       join(path, "curriculum.schema.json"),
       JSON.stringify(z.toJSONSchema(curriculumSchema), null, 2),
@@ -175,4 +198,62 @@ export async function importLegacy(session: Session) {
     );
   await saveProgress(path, session);
   return loadWorkspace();
+}
+
+// Content additions share the progress-write queue. Never replace an existing
+// question or touch progress.json; stable IDs make repeat additions idempotent.
+export function addLearningContent(path: string, collection: string) {
+  const operation = saves
+    .catch(() => {})
+    .then(async () => {
+      if (path !== (await workspacePath()))
+        throw new AiError("The workspace changed. Reopen your library before adding content.", 409);
+      const loaded = await loadWorkspace(path);
+      const incoming =
+        collection === "research"
+          ? researchQuestions
+          : collection === "training"
+            ? trainingQuestions
+            : [sourceQuestion(collection)];
+      const existingIds = new Set(loaded.session.questions.map((q) => q.id));
+      const questions = [
+        ...loaded.session.questions,
+        ...incoming.filter((q) => !existingIds.has(q.id)),
+      ];
+      workspaceQuestionsSchema.parse({ questions });
+      const curriculum = loaded.session.curriculum;
+      // Expand only allowed formats if the existing curriculum excludes an added
+      // exercise format. Keep the user's title, goal, level and modules intact.
+      if (curriculum) {
+        const formats = [...new Set([...curriculum.formats, ...questions.map((q) => q.kind)])];
+        if (formats.length !== curriculum.formats.length) {
+          const file = join(path, "curriculum.json");
+          const temporary = `${file}.${crypto.randomUUID()}.tmp`;
+          await writeFile(temporary, JSON.stringify({ ...curriculum, formats }, null, 2), {
+            mode: 0o600,
+          });
+          await rename(temporary, file);
+        }
+      } else if (collection === "research" || collection === "training") {
+        await createIfMissing(
+          join(path, "curriculum.json"),
+          JSON.stringify(
+            collection === "training" ? trainingCurriculum : researchCurriculum,
+            null,
+            2,
+          ),
+        );
+      }
+      validateQuestions(questions);
+      const file = join(path, "questions.json");
+      const temporary = `${file}.${crypto.randomUUID()}.tmp`;
+      await writeFile(temporary, JSON.stringify({ questions }, null, 2), { mode: 0o600 });
+      await rename(temporary, file);
+      return loadWorkspace(path);
+    });
+  saves = operation.then(
+    () => {},
+    () => {},
+  );
+  return operation;
 }

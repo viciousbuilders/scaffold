@@ -10,6 +10,7 @@ import {
   Play,
   RotateCcw,
   Square,
+  Download,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import type { Question } from "@/core/schemas";
@@ -21,6 +22,9 @@ import { useCodeRunner } from "./use-code-runner";
 import { LANGUAGE_LABELS, type ExecutionResult } from "@/core/execution";
 import { PracticeActions } from "@/ui/practice-actions";
 import { Results } from "./results";
+import { withAttempt } from "@/core/practice-progress";
+import { ColabPanel } from "@/features/colab/colab-panel";
+import { LAB_ENVIRONMENTS } from "@/core/training-path";
 
 const CodeEditor = dynamic(() => import("./code-editor"), {
   ssr: false,
@@ -47,7 +51,7 @@ export function AnswerPane({ question }: { question: Question }) {
   const busy = phase !== "idle" || submitting;
 
   function edit(answer: string) {
-    updateDraft(question, { answer, feedback: null });
+    updateDraft(question, { answer, feedback: null, completed: false });
     setResult(null);
     setSubmitted(false);
     setError("");
@@ -57,6 +61,18 @@ export function AnswerPane({ question }: { question: Question }) {
     if (busy || (question.kind === "coding" && !capability.available)) return;
     setError("");
     setSubmitted(isSubmit);
+    if (question.assessment === "self-review") {
+      if (question.lab && (draft.answer === question.starterCode || !draft.working.trim())) {
+        setError("Complete the lab code and record your run output and explanation first.");
+        return;
+      }
+      if (!draft.answer.trim()) {
+        setError("Record your work and evidence before completing this activity.");
+        return;
+      }
+      updateDraft(question, (previous) => withAttempt(previous, null, "self-review"));
+      return;
+    }
     if (question.kind === "coding") {
       const output = await run(draft.answer, question.tests);
       if (!mounted.current) return;
@@ -66,18 +82,20 @@ export function AnswerPane({ question }: { question: Question }) {
           !output.error &&
           output.tests.length === question.tests.length &&
           output.tests.every((test) => test.passed);
-        updateDraft(question, (previous) => ({
-          ...previous,
-          completed: previous.completed || (correct && !previous.revealed),
-          feedback: {
-            correct,
-            feedback: correct
-              ? draft.revealed
-                ? "All tests passed. Solution was revealed."
-                : "All tests passed."
-              : "Some tests failed.",
-          },
-        }));
+        updateDraft(question, (previous) =>
+          withAttempt(
+            previous,
+            {
+              correct,
+              feedback: correct
+                ? draft.revealed
+                  ? "All tests passed. Solution was revealed."
+                  : "All tests passed."
+                : "Some tests failed.",
+            },
+            "tests",
+          ),
+        );
       }
       return;
     }
@@ -89,19 +107,18 @@ export function AnswerPane({ question }: { question: Question }) {
     const abort = new AbortController();
     abortRef.current = abort;
     try {
+      const localFeedback = gradeAnswer(question, draft.answer);
       const feedback =
-        gradeAnswer(question, draft.answer) ??
+        localFeedback ??
         (await postApi(
           "grade",
           { question, answer: `${draft.answer}\n\nWorking: ${draft.working}` },
           feedbackSchema,
           abort.signal,
         ));
-      updateDraft(question, (previous) => ({
-        ...previous,
-        feedback,
-        completed: previous.completed || (feedback.correct && !previous.revealed),
-      }));
+      updateDraft(question, (previous) =>
+        withAttempt(previous, feedback, localFeedback ? "answer-key" : "ai-feedback"),
+      );
     } catch (cause) {
       if (!abort.signal.aborted)
         setError(
@@ -117,25 +134,48 @@ export function AnswerPane({ question }: { question: Question }) {
     setResult(null);
     setError("");
     setSubmitted(false);
-    updateDraft(question, { answer: question.starterCode, working: "", feedback: null });
+    updateDraft(question, {
+      answer: question.starterCode,
+      working: "",
+      feedback: null,
+      completed: false,
+    });
+  }
+
+  function downloadLab() {
+    if (!question.lab) return;
+    const url = URL.createObjectURL(new Blob([draft.answer], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = question.lab.filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return (
     <section className={`answer-pane answer-${question.kind}`} aria-label="Answer workspace">
       <div className="pane-toolbar">
         <div className="pane-label">
-          {question.kind === "coding" ? <Braces size={15} /> : <PencilLine size={15} />}
+          {question.kind === "coding" || question.lab ? (
+            <Braces size={15} />
+          ) : (
+            <PencilLine size={15} />
+          )}
           <h2>
-            {question.kind === "coding"
-              ? "Code"
-              : question.kind === "quiz"
-                ? "Choose your answer"
-                : "Your answer"}
+            {question.lab
+              ? "Lab code"
+              : question.kind === "coding"
+                ? "Code"
+                : question.kind === "quiz"
+                  ? "Choose your answer"
+                  : question.assessment === "self-review"
+                    ? "Your evidence & notes"
+                    : "Your answer"}
           </h2>
         </div>
         <div className="toolbar-actions">
           <span className="muted small">
-            {question.kind === "coding"
+            {question.kind === "coding" || question.lab
               ? LANGUAGE_LABELS[question.language]
               : question.kind === "quiz"
                 ? "Single choice"
@@ -153,9 +193,25 @@ export function AnswerPane({ question }: { question: Question }) {
         </div>
       </div>
       <div className="answer-content">
-        {question.kind === "coding" ? (
-          <div className="editor-wrapper">
+        {question.lab && <ColabPanel question={question} />}
+        {question.assessment === "self-review" && (
+          <p className="activity-notice">
+            Work on the original platform or in your own environment, then record your results here.
+            Completion is self-reported.
+          </p>
+        )}
+        {question.lab && (
+          <div className="lab-controls">
+            <span>{LAB_ENVIRONMENTS[question.lab.environment]}</span>
+            <button className="button secondary" onClick={downloadLab}>
+              <Download size={14} /> Download code
+            </button>
+          </div>
+        )}
+        {question.kind === "coding" || question.lab ? (
+          <div className={question.lab ? "editor-wrapper lab-editor" : "editor-wrapper"}>
             <CodeEditor
+              key={question.id}
               value={draft.answer}
               language={question.language}
               onChange={edit}
@@ -214,14 +270,29 @@ export function AnswerPane({ question }: { question: Question }) {
         {question.kind === "written" && (
           <div className="working-area">
             <label className="field-label" htmlFor="working">
-              Your working <span className="muted">(optional)</span>
+              {question.lab ? (
+                "Run output & explanation"
+              ) : (
+                <>
+                  Your working <span className="muted">(optional)</span>
+                </>
+              )}
             </label>
             <textarea
               id="working"
               disabled={busy}
               value={draft.working}
-              onChange={(event) => updateDraft(question, { working: event.target.value })}
-              placeholder="Notes and calculations…"
+              onChange={(event) =>
+                updateDraft(question, {
+                  working: event.target.value,
+                  ...(question.lab ? { completed: false } : {}),
+                })
+              }
+              placeholder={
+                question.lab
+                  ? "Command, device, package versions, output and what you learned…"
+                  : "Notes and calculations…"
+              }
               rows={6}
               maxLength={10000}
             />
@@ -303,7 +374,12 @@ export function AnswerPane({ question }: { question: Question }) {
               disabled={busy || (question.kind === "coding" && !capability.available)}
               onClick={() => void check(true)}
             >
-              {busy ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />} Submit
+              {busy ? <LoaderCircle className="spin" size={14} /> : <Check size={14} />}
+              {question.lab
+                ? "Record lab"
+                : question.assessment === "self-review"
+                  ? "Record activity"
+                  : "Submit"}
             </button>
           </PracticeActions>
         </div>

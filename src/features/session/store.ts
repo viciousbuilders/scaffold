@@ -87,6 +87,20 @@ export function applyWorkspace(value: Workspace) {
   backup();
   emit();
 }
+export function applyLearningWorkspace(value: Workspace) {
+  if (workspace?.path !== value.path)
+    throw new Error("The workspace changed. Reopen your library before adding content.");
+  // Content imports must not replace newer in-memory work with disk progress.
+  const previous = read();
+  workspace = value;
+  snapshot = {
+    ...previous,
+    curriculum: value.session.curriculum,
+    questions: value.session.questions,
+  };
+  backup();
+  emit();
+}
 export async function refreshWorkspace() {
   if (!workspace) return;
   try {

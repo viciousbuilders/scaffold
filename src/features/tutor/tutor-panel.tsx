@@ -9,10 +9,19 @@ import { postApi } from "@/ui/api";
 import { Composer } from "@/ui/composer";
 import { Markdown } from "@/ui/markdown";
 
-export function TutorPanel({ question }: { question: Question }) {
+export function TutorPanel({
+  question,
+  expanded,
+  onToggle,
+}: {
+  question: Question;
+  expanded?: boolean;
+  onToggle?: () => void;
+}) {
   const session = useSession();
   const draft = getDraft(question, session);
-  const [open, setOpen] = useState(false);
+  const [localOpen, setOpen] = useState(false);
+  const open = expanded ?? localOpen;
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -77,7 +86,7 @@ export function TutorPanel({ question }: { question: Question }) {
         className="tutor-toggle"
         aria-expanded={open}
         aria-controls="tutor-content"
-        onClick={() => setOpen(!open)}
+        onClick={() => (onToggle ? onToggle() : setOpen(!open))}
       >
         <span className="tutor-toggle-label">
           <MessageCircle size={18} aria-hidden="true" />

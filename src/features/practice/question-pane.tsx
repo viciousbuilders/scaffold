@@ -1,10 +1,9 @@
 "use client";
 
-import { Lightbulb, LockKeyhole } from "lucide-react";
+import { Lightbulb, LockKeyhole, ExternalLink, Bookmark } from "lucide-react";
 import { useState } from "react";
 import type { Question } from "@/core/schemas";
 import { getDraft, updateDraft, useSession } from "@/features/session/store";
-import { TutorPanel } from "@/features/tutor/tutor-panel";
 import { Markdown } from "@/ui/markdown";
 
 export function QuestionPane({ question, index }: { question: Question; index: number }) {
@@ -77,9 +76,35 @@ export function QuestionPane({ question, index }: { question: Question; index: n
             <span>{index + 1}.</span> {question.title}
           </h1>
         </div>
+        <div className="question-study-tools">
+          {question.source && (
+            <a
+              className="source-reference"
+              href={question.source.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {question.source.provider} <ExternalLink size={13} aria-hidden="true" />
+            </a>
+          )}
+          <button
+            className="text-button"
+            aria-pressed={!!draft.reviewRequested}
+            onClick={() => updateDraft(question, { reviewRequested: !draft.reviewRequested })}
+          >
+            <Bookmark size={13} aria-hidden="true" />{" "}
+            {draft.reviewRequested ? "Saved for review" : "Review later"}
+          </button>
+        </div>
         {tab === "description" && (
           <>
             <Markdown>{question.description}</Markdown>
+            {question.lab && (
+              <details className="lab-setup" open>
+                <summary>Environment & run command</summary>
+                <pre>{question.lab.setup}</pre>
+              </details>
+            )}
             {question.examples.map((example, i) => (
               <div className="example" key={i}>
                 <h2>Example {i + 1}</h2>
@@ -110,6 +135,49 @@ export function QuestionPane({ question, index }: { question: Question; index: n
                 </ul>
               </div>
             )}
+            {question.source?.attribution && (
+              <p className="source-attribution">
+                {question.source.attribution}
+                {question.source.version && ` Snapshot ${question.source.version.slice(0, 12)}.`}
+                {question.source.provider === "Exercism" && (
+                  <>
+                    {" "}
+                    <a href="/licenses/exercism.txt" target="_blank" rel="noreferrer">
+                      Read the MIT license.
+                    </a>
+                  </>
+                )}
+              </p>
+            )}
+            {!!draft.attempts?.length && (
+              <details className="attempt-history">
+                <summary>Activity history · {draft.attempts.length} recorded</summary>
+                {[...draft.attempts].reverse().map((attempt, index) => (
+                  <details key={`${attempt.at}-${index}`} className="attempt-entry">
+                    <summary>
+                      {new Date(attempt.at).toLocaleString()} ·{" "}
+                      {attempt.evidence === "draft"
+                        ? "Draft"
+                        : attempt.evidence === "self-review"
+                          ? "Self-reported"
+                          : attempt.correct
+                            ? "Passed"
+                            : "Needs work"}{" "}
+                      ·{" "}
+                      {attempt.hints || attempt.revealed || attempt.tutorUsed
+                        ? "Assisted"
+                        : "No help recorded"}
+                    </summary>
+                    <p>
+                      {attempt.evidence === "ai-feedback" ? "AI feedback (provisional): " : ""}
+                      {attempt.feedback}
+                    </p>
+                    <pre>{attempt.answer}</pre>
+                    {attempt.working && <pre>{attempt.working}</pre>}
+                  </details>
+                ))}
+              </details>
+            )}
           </>
         )}
         {tab === "hints" && (
@@ -139,7 +207,7 @@ export function QuestionPane({ question, index }: { question: Question; index: n
             <div className="solution-content">
               <span className="badge subtle">Solution revealed</span>
               <Markdown>
-                {question.kind === "coding"
+                {question.kind === "coding" || question.lab
                   ? `\`\`\`${question.language}\n${question.solution}\n\`\`\``
                   : question.solution}
               </Markdown>
@@ -160,7 +228,6 @@ export function QuestionPane({ question, index }: { question: Question; index: n
             </div>
           ))}
       </div>
-      <TutorPanel question={question} />
     </section>
   );
 }

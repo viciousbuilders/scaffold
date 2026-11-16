@@ -48,6 +48,24 @@ export const questionSchema = z.object({
   hints: z.array(z.string()).min(1).max(4),
   solution: z.string().min(1).max(8000),
   explanation: z.string().min(1).max(8000),
+  source: z
+    .object({
+      provider: z.string().min(1).max(80),
+      url: z.url().refine((value) => value.startsWith("https://"), "Use an HTTPS source URL."),
+      externalId: z.string().max(160),
+      version: z.string().max(160).optional(),
+      license: z.string().max(120).optional(),
+      attribution: z.string().max(500).optional(),
+    })
+    .optional(),
+  assessment: z.enum(["checked", "self-review"]).optional(),
+  lab: z
+    .object({
+      environment: z.enum(["pytorch", "cuda", "triton", "pytorch-cuda"]),
+      filename: z.string().regex(/^[a-z0-9_-]+\.(py|cu)$/),
+      setup: z.string().min(1).max(2000),
+    })
+    .optional(),
 });
 export const questionBatchSchema = z.object({ questions: z.array(questionSchema).min(1).max(6) });
 export const feedbackSchema = z.object({ correct: z.boolean(), feedback: z.string().min(1) });
@@ -66,6 +84,8 @@ export function validateQuestions(
   if (new Set(questions.map((q) => q.id)).size !== questions.length)
     throw new Error("Question IDs must be unique.");
   for (const q of questions) {
+    if (q.lab && (q.kind !== "written" || q.assessment !== "self-review" || !q.starterCode.trim()))
+      throw new Error("External labs need a written self-review activity and starter code.");
     if (formats && !formats.includes(q.kind))
       throw new Error("Question format does not match the curriculum.");
     if (q.kind === "coding" && (!q.starterCode.trim() || q.tests.length < 2))

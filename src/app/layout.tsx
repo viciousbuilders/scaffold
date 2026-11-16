@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "Scaffold · Vicious Builders",
   applicationName: "Scaffold",
   description:
-    "Your personal practice workspace for coding, quant questions and quizzes created with Codex.",
+    "A personal learning workspace for any topic, with projects, practice, notes and review.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

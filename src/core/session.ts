@@ -1,6 +1,19 @@
 import { z } from "zod";
+import { learningProjectSchema } from "./learning-projects";
 import { curriculumSchema, feedbackSchema, messageSchema, questionSchema } from "./schemas";
 
+export const attemptSchema = z.object({
+  at: z.iso.datetime(),
+  answer: z.string(),
+  working: z.string(),
+  hints: z.number().int().min(0),
+  revealed: z.boolean(),
+  tutorUsed: z.boolean().optional(),
+  evidence: z.enum(["tests", "answer-key", "ai-feedback", "self-review", "draft"]),
+  correct: z.boolean().nullable(),
+  feedback: z.string(),
+});
+export type Attempt = z.infer<typeof attemptSchema>;
 const draftSchema = z.object({
   answer: z.string(),
   working: z.string(),
@@ -9,9 +22,12 @@ const draftSchema = z.object({
   completed: z.boolean(),
   tutorMessages: z.array(messageSchema),
   feedback: feedbackSchema.nullable(),
+  attempts: z.array(attemptSchema).max(100).optional(),
+  reviewRequested: z.boolean().optional(),
 });
 export const sessionSchema = z.object({
   version: z.literal(1),
+  learningProjects: z.array(learningProjectSchema).max(100).optional(),
   curriculum: curriculumSchema.nullable(),
   messages: z.array(messageSchema),
   questions: z.array(questionSchema),

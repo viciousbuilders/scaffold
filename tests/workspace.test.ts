@@ -71,3 +71,125 @@ it("updates legacy generated schemas while preserving personal schema edits", as
   await openWorkspace(path);
   expect(await readFile(schemaFile, "utf8")).toBe('{"personal":true}');
 });
+it("adds the research path idempotently without replacing questions, curriculum or progress", async () => {
+  const { addLearningContent } = await import("@/server/workspace");
+  await writeFile(join(path, "curriculum.json"), JSON.stringify(sampleCurriculum));
+  await writeFile(join(path, "questions.json"), JSON.stringify({ questions: sampleQuestions }));
+  await saveProgress(path, {
+    ...EMPTY,
+    theme: "dark",
+    drafts: {
+      "sample-positive": {
+        answer: "my existing code",
+        working: "notes",
+        hintCount: 1,
+        revealed: false,
+        completed: false,
+        tutorMessages: [],
+        feedback: null,
+      },
+    },
+  });
+  const before = await readFile(join(path, "progress.json"), "utf8");
+  const loaded = await addLearningContent(path, "research");
+  expect(loaded.session.questions).toHaveLength(sampleQuestions.length + 18);
+  expect(loaded.session.questions.slice(0, sampleQuestions.length)).toEqual(sampleQuestions);
+  expect(loaded.session.curriculum).toEqual(sampleCurriculum);
+  await addLearningContent(path, "research");
+  expect((await loadWorkspace()).session.questions).toHaveLength(sampleQuestions.length + 18);
+  expect(await readFile(join(path, "progress.json"), "utf8")).toBe(before);
+});
+it("serializes content additions and rejects stale workspace writes", async () => {
+  const { addLearningContent } = await import("@/server/workspace");
+  await Promise.all([
+    addLearningContent(path, "research"),
+    addLearningContent(path, "exercism-binary-search"),
+  ]);
+  const loaded = await loadWorkspace();
+  expect(loaded.session.questions).toHaveLength(19);
+  expect(loaded.session.curriculum?.modules).toHaveLength(6);
+  await expect(addLearningContent(join(directory, "elsewhere"), "research")).rejects.toMatchObject({
+    status: 409,
+  });
+});
+it("keeps existing instructions and expands only formats when adding a new exercise kind", async () => {
+  const { addLearningContent } = await import("@/server/workspace");
+  const curriculum = { ...sampleCurriculum, formats: ["quiz"] };
+  await writeFile(join(path, "curriculum.json"), JSON.stringify(curriculum));
+  await writeFile(
+    join(path, "questions.json"),
+    JSON.stringify({ questions: [sampleQuestions[3]] }),
+  );
+  const loaded = await addLearningContent(path, "exercism-binary-search");
+  expect(loaded.session.curriculum).toEqual({ ...curriculum, formats: ["quiz", "coding"] });
+  expect(loaded.session.questions[0]).toEqual(sampleQuestions[3]);
+});
+it("adds training labs without replacing the research path or its progress", async () => {
+  const { addLearningContent } = await import("@/server/workspace");
+  await addLearningContent(path, "research");
+  const curriculumBefore = await readFile(join(path, "curriculum.json"), "utf8");
+  await saveProgress(path, { ...EMPTY, theme: "dark" });
+  const progressBefore = await readFile(join(path, "progress.json"), "utf8");
+  await addLearningContent(path, "training");
+  await addLearningContent(path, "training");
+  const loaded = await loadWorkspace();
+  expect(loaded.session.questions).toHaveLength(30);
+  expect(loaded.session.questions.find((q) => q.id === "training-cuda-add")?.lab?.environment).toBe(
+    "cuda",
+  );
+  expect(await readFile(join(path, "curriculum.json"), "utf8")).toBe(curriculumBefore);
+  expect(await readFile(join(path, "progress.json"), "utf8")).toBe(progressBefore);
+});
+
+it("persists learning projects and notes without changing exercise drafts", async () => {
+  await saveProgress(path, {
+    ...EMPTY,
+    learningProjects: [
+      {
+        id: "experiment",
+        title: "A small experiment",
+        subject: "AI / ML",
+        goal: "Compare baselines",
+        source: "",
+        notes: "My question",
+        results: "",
+        questionIds: [],
+        steps: [],
+        createdAt: new Date().toISOString(),
+        archived: false,
+      },
+    ],
+  });
+  const loaded = await loadWorkspace();
+  expect(loaded.session.learningProjects?.[0].notes).toBe("My question");
+  expect(loaded.session.drafts).toEqual({});
+});
+
+it("writes topic-neutral authoring guidance and preserves customized guides", async () => {
+  const guidePath = join(path, "SCAFFOLD.md");
+  const guide = await readFile(guidePath, "utf8");
+  expect(guide).toContain("Support any topic the learner chooses");
+  expect(guide).toContain("assessment: self-review");
+  expect(guide).not.toContain("aimed at AI work, quant problems");
+  await writeFile(guidePath, "My own learning instructions");
+  await openWorkspace(path);
+  expect(await readFile(guidePath, "utf8")).toBe("My own learning instructions");
+});
+
+it("saves and reloads a project on a custom subject", async () => {
+  const project = {
+    id: "film-project",
+    title: "Understand documentary storytelling",
+    subject: "Film history",
+    goal: "Compare two approaches to documentary storytelling.",
+    source: "",
+    notes: "Compare narrative structure.",
+    results: "",
+    questionIds: [],
+    steps: [{ id: "watch", title: "Watch and annotate a documentary", done: false }],
+    createdAt: new Date().toISOString(),
+    archived: false,
+  };
+  await saveProgress(path, { ...EMPTY, learningProjects: [project] });
+  expect((await loadWorkspace()).session.learningProjects).toEqual([project]);
+});

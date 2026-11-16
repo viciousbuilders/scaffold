@@ -1,4 +1,4 @@
-import { ProblemSet } from "@/features/practice/problem-set";
+import { LearningHome } from "@/features/learning/learning-home";
 export default function Page() {
-  return <ProblemSet />;
+  return <LearningHome />;
 }
