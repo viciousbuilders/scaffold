@@ -133,18 +133,15 @@ it("idle releases an owned GPU without resetting its timer on status polling", a
     );
     const { colabAction } = await import("@/server/colab/service");
     await colabAction("connect");
-    // Flush asynchronous file writes without advancing the idle deadline.
-    for (let i = 0; i < 50; i++) {
-      await vi.advanceTimersByTimeAsync(1);
-      if ((await colabAction("status")).phase === "idle") break;
-    }
-    expect(await colabAction("status")).toHaveProperty("connected", true);
+    // Wait for the async ownership write and idle-timer installation, not just
+    // the earlier connected flag. Disk I/O can settle later on CI runners.
+    await vi.waitFor(async () => {
+      expect(await colabAction("status")).toMatchObject({ phase: "idle", connected: true });
+    });
     await vi.advanceTimersByTimeAsync(300001);
-    for (let i = 0; i < 50; i++) {
-      await vi.advanceTimersByTimeAsync(1);
-      if (!(await colabAction("status")).connected) break;
-    }
-    expect(await colabAction("status")).toHaveProperty("connected", false);
+    await vi.waitFor(async () => {
+      expect(await colabAction("status")).toHaveProperty("connected", false);
+    });
     expect(vi.mocked(fetch).mock.calls.some(([, opts]) => opts?.method === "DELETE")).toBe(true);
   } finally {
     vi.useRealTimers();
